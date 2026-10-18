@@ -10,7 +10,7 @@
 <h1 align="center">FigCraft</h1>
 
 <p align="center">
-  <b>Interface design; an open-source, modern collaborative interface design and prototyping application, built in pure Rust.</b><br>
+  <b>Interface design and prototyping: open source, collaborative and built in pure Rust.</b><br>
   Frames, auto layout, components and variants, vector networks, styles, variables and prototypes,<br>
   in a native app that opens instantly and works offline. Open source, and yours.
 </p>
