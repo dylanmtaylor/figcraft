@@ -696,13 +696,38 @@ pub enum ServerMsg {
     },
 }
 
-/// `YYYY-MM-DD HH:MM UTC` for seconds since 1970 (how servers and apps show the times in these
-/// messages). A time past the last date chrono can represent (year 262143) reads as the epoch.
-pub fn utc_date(secs: u64) -> String {
+/// (days since 1970-01-01, seconds-of-day, nanos) → (proleptic Gregorian year, the same wall-clock
+/// instant moved into chrono's range by whole 400-year cycles). The calendar repeats every 400
+/// years (146_097 days), so month, day and time of day come from chrono and only the year is
+/// carried, which keeps the result exact for any `i64` day count. This is not hand-rolled calendar
+/// math: chrono still does the date, the cycle count just shifts the year.
+fn utc_parts(days: i64, sod: u32, nanos: u32) -> (i64, chrono::NaiveDateTime) {
     use chrono::Datelike;
-    let t = i64::try_from(secs).ok().and_then(|s| chrono::DateTime::from_timestamp(s, 0)).unwrap_or_default();
-    // `{:04}` rather than `%Y`, which writes a `+` before years past 9999 (the old `{y:04}` did not).
-    format!("{:04}-{}", t.year(), t.format("%m-%d %H:%M UTC"))
+    let (cycles, rest) = (days.div_euclid(146_097), days.rem_euclid(146_097));
+    // `rest + 719_163` (1970-01-01 is CE day 719_163) is always a valid CE day, and `sod` < 86_400.
+    let date = i32::try_from(rest + 719_163).ok().and_then(chrono::NaiveDate::from_num_days_from_ce_opt);
+    let time = chrono::NaiveTime::from_num_seconds_from_midnight_opt(sod.min(86_399), nanos.min(999_999_999));
+    match (date, time) {
+        (Some(d), Some(t)) => {
+            let y = i128::from(d.year()) + i128::from(cycles) * 400;
+            (i64::try_from(y).unwrap_or(if y < 0 { i64::MIN } else { i64::MAX }), d.and_time(t))
+        }
+        _ => (1970, chrono::NaiveDateTime::default()), // unreachable
+    }
+}
+
+/// `YYYY-MM-DD HH:MM UTC` for seconds since 1970 (how servers and apps show the times in these
+/// messages). Years past chrono's own range (262143) keep converting: the instant is moved into
+/// range by whole 400-year cycles and the real year restored, so every `u64` reads as the date the
+/// old hand-rolled conversion produced (e.g. `u64::MAX` → `584554051223-11-09 07:00 UTC`).
+pub fn utc_date(secs: u64) -> String {
+    // The day count of any `u64` seconds fits in `i64` (`u64::MAX / 86_400` ≈ 2.1e14), and the
+    // seconds-of-day is < 86_400, so the conversion is always exact (no epoch fallback). Splitting
+    // with `u64` arithmetic (as the old code did) avoids the `i64` seconds overflow near `u64::MAX`.
+    let (days, sod) = (i64::try_from(secs / 86_400).unwrap_or(i64::MAX), (secs % 86_400) as u32);
+    let (y, t) = utc_parts(days, sod, 0);
+    // `{y:04}` rather than `%Y`, which writes a `+` before years past 9999 (the old code did not).
+    format!("{y:04}-{}", t.format("%m-%d %H:%M UTC"))
 }
 
 /// The binary form of `msg`: [`WIRE_VERSION`], then postcard.
@@ -759,7 +784,9 @@ mod tests {
         assert_eq!(utc_date(1_791_208_980), "2026-10-05 14:03 UTC");
         // A year past 9999 keeps the plain zero-padded year (no `+`), as the old `{y:04}` did.
         assert_eq!(utc_date(253_402_300_800), "10000-01-01 00:00 UTC");
-        // Past chrono's range reads as the epoch instead of panicking.
-        assert_eq!(utc_date(u64::MAX), "1970-01-01 00:00 UTC");
+        // Past chrono's own year range (262143) the instant is moved into range by whole 400-year
+        // cycles and the real year restored, so it keeps the old hand-rolled output instead of
+        // falling back to the epoch.
+        assert_eq!(utc_date(u64::MAX), "584554051223-11-09 07:00 UTC");
     }
 }
