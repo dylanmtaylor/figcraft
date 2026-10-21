@@ -282,15 +282,19 @@ fn desktop_title_bar() -> figcraft_ui_egui::TitleBar {
 
 /// Map craft-window's [`craft_window::Frame`] onto FigCraft's own [`figcraft_ui_egui::TitleBar`].
 ///
-/// `Frame::Desktop` keeps the system frame — but on macOS that stays the inset title bar with its
-/// traffic lights, exactly as before, rather than a plain native bar. `Frame::App` means the app
-/// draws its own frame, which is FigCraft's custom title bar.
+/// `Frame::App` means the app draws its own frame — FigCraft's custom title bar. `Frame::Desktop`
+/// means the desktop draws it, but FigCraft keeps each platform's existing look there:
+/// - macOS: the inset title bar with its traffic lights (`TitleBar::Inset`), unchanged.
+/// - Windows: FigCraft's own custom title bar (`TitleBar::Custom`), unchanged — Windows never used
+///   the plain native frame, and craft-window returning `Desktop` on Windows must not change that.
+/// - Linux and the BSDs: the compositor's native frame (`TitleBar::Native`). This is the only
+///   behaviour change: KDE and the other server-side-decoration compositors now keep their frame.
 fn title_bar_for(frame: craft_window::Frame) -> figcraft_ui_egui::TitleBar {
     use figcraft_ui_egui::TitleBar;
     match frame {
-        // The desktop draws the frame. macOS insets its content under the traffic lights (unchanged
-        // behaviour); every other platform gets the plain native frame.
         craft_window::Frame::Desktop if cfg!(target_os = "macos") => TitleBar::Inset,
+        // Windows kept FigCraft's own title bar before this change; keep it.
+        craft_window::Frame::Desktop if cfg!(target_os = "windows") => TitleBar::Custom,
         craft_window::Frame::Desktop => TitleBar::Native,
         // The app draws the frame (GNOME's Wayland session, or a `FIGCRAFT_TITLEBAR=app` override).
         craft_window::Frame::App(_) => TitleBar::Custom,
@@ -322,14 +326,20 @@ mod title_bar_tests {
         assert_eq!(viewport.decorations, Some(false));
     }
 
-    /// craft-window's desktop frame keeps the native frame everywhere except macOS, which keeps its
-    /// inset traffic lights (unchanged behaviour). This is the only Linux behaviour change: KDE and
-    /// the other server-side-decoration compositors now keep their native frame.
+    /// craft-window's desktop frame keeps each platform's existing look: macOS its inset traffic
+    /// lights, Windows FigCraft's own custom title bar (unchanged), and Linux/BSD the compositor's
+    /// native frame. The Linux case is the only behaviour change: KDE and the other
+    /// server-side-decoration compositors now keep their native frame.
     #[test]
-    fn the_desktop_frame_keeps_the_native_frame_off_macos() {
+    fn the_desktop_frame_is_mapped_per_platform() {
         let bar = super::title_bar_for(craft_window::Frame::Desktop);
         if cfg!(target_os = "macos") {
             assert_eq!(bar, TitleBar::Inset);
+        } else if cfg!(target_os = "windows") {
+            // Windows kept its own title bar before and must keep it now.
+            assert_eq!(bar, TitleBar::Custom);
+            let viewport = super::window_chrome(egui::ViewportBuilder::default(), bar);
+            assert_eq!(viewport.decorations, Some(false));
         } else {
             assert_eq!(bar, TitleBar::Native);
             let viewport = super::window_chrome(egui::ViewportBuilder::default(), bar);

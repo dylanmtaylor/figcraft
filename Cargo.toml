@@ -36,9 +36,7 @@ figcraft-plugin = { path = "crates/plugin" }
 craft-docpath = { version = "0.1.0", git = "https://github.com/storytold/craft-libs", rev = "82a24b006eefa036b43c09a67fb9a3fbd17ffe63" }
 # Who draws the window frame on Linux — the compositor or the app — so every Craft app shows the
 # same native titlebar per desktop (craft-libs). The `egui` feature adds `decorate`/`decorations`.
-# NOT MERGEABLE YET: this points at the unmerged feature branch from craft-libs#217. Repoint to a
-# merged `rev = "<commit>"` (as the other craft-libs deps are pinned) before this PR can land.
-craft-window = { git = "https://github.com/storytold/craft-libs", branch = "feat/add-craft-window-decorations", features = ["egui"] }
+craft-window = { git = "https://github.com/storytold/craft-libs", rev = "1f805378d454dac48b5c214029d254055fdf961b", features = ["egui"] }
 
 # foundation
 kurbo = { version = "0.13", features = ["serde"] }
