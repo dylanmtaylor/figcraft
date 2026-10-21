@@ -697,10 +697,12 @@ pub enum ServerMsg {
 }
 
 /// `YYYY-MM-DD HH:MM UTC` for seconds since 1970 (how servers and apps show the times in these
-/// messages).
+/// messages). A time past the last date chrono can represent (year 262143) reads as the epoch.
 pub fn utc_date(secs: u64) -> String {
+    use chrono::Datelike;
     let t = i64::try_from(secs).ok().and_then(|s| chrono::DateTime::from_timestamp(s, 0)).unwrap_or_default();
-    t.format("%Y-%m-%d %H:%M UTC").to_string()
+    // `{:04}` rather than `%Y`, which writes a `+` before years past 9999 (the old `{y:04}` did not).
+    format!("{:04}-{}", t.year(), t.format("%m-%d %H:%M UTC"))
 }
 
 /// The binary form of `msg`: [`WIRE_VERSION`], then postcard.
@@ -755,5 +757,9 @@ mod tests {
         assert_eq!(utc_date(951_782_400), "2000-02-29 00:00 UTC");
         assert_eq!(utc_date(1_709_164_800), "2024-02-29 00:00 UTC");
         assert_eq!(utc_date(1_791_208_980), "2026-10-05 14:03 UTC");
+        // A year past 9999 keeps the plain zero-padded year (no `+`), as the old `{y:04}` did.
+        assert_eq!(utc_date(253_402_300_800), "10000-01-01 00:00 UTC");
+        // Past chrono's range reads as the epoch instead of panicking.
+        assert_eq!(utc_date(u64::MAX), "1970-01-01 00:00 UTC");
     }
 }
