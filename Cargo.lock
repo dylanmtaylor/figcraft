@@ -743,6 +743,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chrono"
+version = "0.4.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "clipboard-win"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1499,6 +1508,7 @@ name = "figcraft-collab"
 version = "0.8.0"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "figcraft-color",
  "figcraft-doc",
  "figcraft-geom",
@@ -1744,6 +1754,7 @@ name = "figcraft-ui-egui"
 version = "0.8.0"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "egui",
  "egui_extras",
  "figcraft-color",

@@ -699,19 +699,8 @@ pub enum ServerMsg {
 /// `YYYY-MM-DD HH:MM UTC` for seconds since 1970 (how servers and apps show the times in these
 /// messages).
 pub fn utc_date(secs: u64) -> String {
-    let days = i64::try_from(secs / 86_400).unwrap_or(0);
-    let (h, m) = ((secs % 86_400) / 3600, (secs % 3600) / 60);
-    // Days to a civil date (proleptic Gregorian).
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = yoe + era * 400 + i64::from(mo <= 2);
-    format!("{y:04}-{mo:02}-{d:02} {h:02}:{m:02} UTC")
+    let t = i64::try_from(secs).ok().and_then(|s| chrono::DateTime::from_timestamp(s, 0)).unwrap_or_default();
+    t.format("%Y-%m-%d %H:%M UTC").to_string()
 }
 
 /// The binary form of `msg`: [`WIRE_VERSION`], then postcard.
@@ -751,4 +740,20 @@ pub fn decode_json<T: DeserializeOwned>(text: &str, max_bytes: usize) -> Result<
         return Err(Error::Decode(format!("message of {} bytes is over the {max_bytes}-byte limit", text.len())));
     }
     serde_json::from_str(text).map_err(|e| Error::Decode(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `utc_date` keeps the exact `YYYY-MM-DD HH:MM UTC` output the hand-rolled civil-from-days
+    /// code produced (leap days and all).
+    #[test]
+    fn utc_date_formats_seconds_since_1970() {
+        assert_eq!(utc_date(0), "1970-01-01 00:00 UTC");
+        assert_eq!(utc_date(1_000_000), "1970-01-12 13:46 UTC");
+        assert_eq!(utc_date(951_782_400), "2000-02-29 00:00 UTC");
+        assert_eq!(utc_date(1_709_164_800), "2024-02-29 00:00 UTC");
+        assert_eq!(utc_date(1_791_208_980), "2026-10-05 14:03 UTC");
+    }
 }

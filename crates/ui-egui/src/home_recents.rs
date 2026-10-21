@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use chrono::Datelike;
 use egui::{Align2, Color32, CornerRadius, Id, Key, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use figcraft_engine::Prefs;
 use figcraft_format::thumbnail::{FileKind, Preview};
@@ -202,16 +203,8 @@ const MONTHS: [&str; 12] = [
 
 /// `secs` since 1970 as a date in UTC: "Mar 4, 2026".
 fn date(secs: u64) -> String {
-    // Days to a civil date (Howard Hinnant's days_from_civil, inverted).
-    let z = i64::try_from(secs / 86_400).unwrap_or(0) + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let day = doy - (153 * mp + 2) / 5 + 1;
-    let month = if mp < 10 { mp + 3 } else { mp - 9 };
-    let year = yoe + era * 400 + i64::from(month <= 2);
+    let dt = i64::try_from(secs).ok().and_then(|s| chrono::DateTime::from_timestamp(s, 0)).unwrap_or_default().naive_utc();
+    let (year, month, day) = (i64::from(dt.year()), i64::from(dt.month()), i64::from(dt.day()));
     let name = usize::try_from(month - 1).ok().and_then(|m| MONTHS.get(m)).map_or("", |m| tr(m));
     trf("{month} {day}, {year}", &[("month", &name), ("day", &day), ("year", &year)])
 }
@@ -964,4 +957,19 @@ fn list(ui: &mut Ui, t: &Tokens, recents: &mut Recents, files: &[Shown], now: u6
     }
     arrows(ui, recents, files, 0, 1);
     action
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `date` keeps the exact "Mon D, YYYY" (UTC) output the hand-rolled days-from-civil code
+    /// produced. With no catalog loaded the month and format strings pass through in English.
+    #[test]
+    fn date_formats_seconds_since_1970_in_utc() {
+        assert_eq!(date(0), "Jan 1, 1970");
+        assert_eq!(date(951_782_400), "Feb 29, 2000");
+        assert_eq!(date(1_709_164_800), "Feb 29, 2024");
+        assert_eq!(date(1_741_046_400), "Mar 4, 2025");
+    }
 }
