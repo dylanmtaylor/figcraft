@@ -17,12 +17,13 @@ if [[ -z "${APPLE_CERTIFICATE:-}" ]]; then
   exit 0
 fi
 
-TMP="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+TMP_BASE="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+TMP="$(mktemp -d "${TMP_BASE}/figcraft-signing.XXXXXX")"
+trap 'rm -rf "$TMP"' EXIT
 KEYCHAIN="$TMP/figcraft-signing.keychain-db"
 CERT="$TMP/figcraft-signing.p12"
 KC_PASS="${KEYCHAIN_PASSWORD:-$(openssl rand -hex 24)}"
 
-trap 'rm -f "$CERT"' EXIT
 printf '%s' "$APPLE_CERTIFICATE" | base64 --decode >"$CERT"
 security create-keychain -p "$KC_PASS" "$KEYCHAIN"
 security set-keychain-settings -lut 21600 "$KEYCHAIN"

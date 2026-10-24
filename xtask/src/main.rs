@@ -201,10 +201,11 @@ fn assets() -> bool {
 fn walk(dir: &std::path::Path, f: &mut dyn FnMut(&std::path::Path)) {
     let Ok(rd) = std::fs::read_dir(dir) else { return };
     for e in rd.flatten() {
+        let Ok(ft) = e.file_type() else { continue };
         let p = e.path();
-        if p.is_dir() {
+        if ft.is_dir() && !ft.is_symlink() {
             walk(&p, f);
-        } else {
+        } else if !ft.is_dir() {
             f(&p);
         }
     }
