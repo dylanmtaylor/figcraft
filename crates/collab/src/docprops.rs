@@ -132,18 +132,15 @@ impl<T: Keyed> List<T> {
         let keys: Vec<T::Key> = value.read("order")?;
         let list = (self.get_mut)(doc);
         let mut slots: Vec<Option<T>> = std::mem::take(list).into_iter().map(Some).collect();
-        let mut at: BTreeMap<T::Key, Vec<usize>> = BTreeMap::new();
+        let mut at: BTreeMap<T::Key, std::collections::VecDeque<usize>> = BTreeMap::new();
         for (i, e) in slots.iter().enumerate() {
             if let Some(e) = e {
-                at.entry(e.key()).or_default().push(i);
+                at.entry(e.key()).or_default().push_back(i);
             }
         }
         for k in keys {
             let Some(idx) = at.get_mut(&k) else { continue };
-            if idx.is_empty() {
-                continue;
-            }
-            let i = idx.remove(0);
+            let Some(i) = idx.pop_front() else { continue };
             if let Some(e) = slots.get_mut(i).and_then(Option::take) {
                 list.push(e);
             }

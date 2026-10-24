@@ -541,11 +541,12 @@ impl Server {
                 nodes.extend(t.write(self.state.value(&t)?.as_ref()));
             }
         }
+        let mut restored = std::collections::BTreeSet::new();
         for id in gone {
             match doc.node(id) {
                 Some(_) => {
                     for d in doc.subtree(id) {
-                        if let Some(n) = doc.node(d) {
+                        if restored.insert(d) && let Some(n) = doc.node(d) {
                             nodes.push(create_change(n, self.state.key(d))?);
                         }
                     }
