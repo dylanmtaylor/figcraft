@@ -546,7 +546,9 @@ impl Server {
             match doc.node(id) {
                 Some(_) => {
                     for d in doc.subtree(id) {
-                        if restored.insert(d) && let Some(n) = doc.node(d) {
+                        if restored.insert(d)
+                            && let Some(n) = doc.node(d)
+                        {
                             nodes.push(create_change(n, self.state.key(d))?);
                         }
                     }
