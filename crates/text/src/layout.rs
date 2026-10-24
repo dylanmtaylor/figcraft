@@ -100,7 +100,7 @@ pub struct Decoration {
 }
 
 /// Most dots or wave samples drawn for one decoration.
-const MAX_DECO_STEPS: usize = 20_000;
+const MAX_DECO_STEPS: usize = 2_500;
 
 impl Decoration {
     /// The line's outline: a bar, a row of dots or a wave, `thickness` thick.

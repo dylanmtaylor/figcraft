@@ -81,6 +81,9 @@ impl BatchRename {
                     out.push_str(name.get(last..m.start()).unwrap_or_default());
                     let (before, after) = (name.get(..m.start()).unwrap_or_default(), name.get(m.end()..).unwrap_or_default());
                     expand(&self.replace, &Ctx { matched: m.as_str(), before, after, groups: Some(&caps), up, down }, &mut out);
+                    if out.len() >= MAX_NAME * 4 {
+                        break;
+                    }
                     last = m.end();
                 }
                 out.push_str(name.get(last..).unwrap_or_default());
@@ -110,6 +113,9 @@ impl BatchRename {
 fn expand(template: &str, c: &Ctx, out: &mut String) {
     let mut it = template.chars().peekable();
     while let Some(ch) = it.next() {
+        if out.len() >= MAX_NAME * 4 {
+            break;
+        }
         if ch != '$' {
             out.push(ch);
             continue;
