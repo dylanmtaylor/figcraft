@@ -338,7 +338,24 @@ fn stamp(s: &Session, d: &DocState) -> Vec<u64> {
 fn write_atomic(path: &Path, doc: &figcraft_engine::doc::Document, versions: &[Version], branches: &[Branch]) -> bool {
     let Ok(bytes) = figcraft_format::save_bytes_with_history(doc, None, versions, branches) else { return false };
     let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, bytes).is_ok() && std::fs::rename(&tmp, path).is_ok()
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut opts = std::fs::OpenOptions::new();
+        opts.write(true).create(true).truncate(true).mode(0o600);
+        let Ok(mut f) = opts.open(&tmp) else { return false };
+        if std::io::Write::write_all(&mut f, &bytes).is_err() {
+            let _ = std::fs::remove_file(&tmp);
+            return false;
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        if std::fs::write(&tmp, bytes).is_err() {
+            return false;
+        }
+    }
+    std::fs::rename(&tmp, path).is_ok()
 }
 
 /// [`recover_all`], for a start that keeps nothing waiting: how many documents came back as

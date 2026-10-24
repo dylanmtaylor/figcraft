@@ -272,14 +272,19 @@ pub fn export(file: &str, out: &str, t: &Target) -> CliResult<ExitCode> {
         return Err(CliError::Failed("the page is empty: nothing to export".into()));
     }
     let mut used = std::collections::BTreeSet::new();
+    let mut next_suffix: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for id in ids {
         let base = sanitize(doc.node(id).map(|n| n.name.as_str()).unwrap_or("layer"));
-        let mut name = base.clone();
-        let mut k = 2;
-        while !used.insert(name.to_lowercase()) {
-            name = format!("{base} {k}");
-            k += 1;
-        }
+        let base_lower = base.to_lowercase();
+        let next = next_suffix.entry(base_lower).or_insert(1);
+        let name = loop {
+            let k = *next;
+            *next += 1;
+            let candidate = if k == 1 { base.clone() } else { format!("{base} {k}") };
+            if used.insert(candidate.to_lowercase()) {
+                break candidate;
+            }
+        };
         let path = Path::new(out).join(format!("{name}.{}", fmt.ext())).to_string_lossy().into_owned();
         write(&path, &bytes_of(&[id])?)?;
         println!("{path}");
