@@ -63,6 +63,7 @@ pub mod theme;
 pub mod toolbar;
 pub mod typography;
 pub mod ui_scale;
+pub mod updates_ui;
 pub mod variable_ui;
 pub mod variables_panel;
 pub mod vector_panel;
@@ -918,6 +919,7 @@ pub struct FigApp {
     /// Test-only count of the one IME observation each viewport pass makes.
     #[cfg(test)]
     pub(crate) ime_observations: u32,
+    pub(crate) updates_rt: updates_ui::Runtime,
 }
 
 /// What to do with the result of a command run in the background.
@@ -966,6 +968,7 @@ impl FigApp {
             ime: egui::ime_context::ImeContextTracker::new(),
             #[cfg(test)]
             ime_observations: 0,
+            updates_rt: updates_ui::Runtime::default(),
         }
     }
 
@@ -1649,6 +1652,9 @@ impl FigApp {
     /// only runs while the root is minimised still gets theme switches, CJK faces for its own
     /// document, and the right `ui.dark` for its tabs and dialogs.
     pub(crate) fn viewport_setup(&mut self, ctx: &egui::Context) {
+    /// Per-frame logic that doesn't draw (control requests, theme, language).
+    pub fn logic(&mut self, ctx: &egui::Context) {
+        updates_ui::tick(self, ctx);
         if self.language.as_ref() != Some(&self.session.prefs.language) {
             i18n::set(&self.session.prefs.language, self.services.system_language().as_deref());
             self.language = Some(self.session.prefs.language.clone());
@@ -2019,6 +2025,7 @@ impl FigApp {
         self.end_unwanted_text_preview(&ctx);
         self.end_pen_outside_design();
         dialogs::show(self, &ctx);
+        updates_ui::show(self, &ctx);
         self.toast_ui(&ctx);
         // A rename started after the layers panel drew (Cmd/Ctrl+R, a double-click) opens its field
         // next frame.

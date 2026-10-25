@@ -37,3 +37,6 @@ wat = { workspace = true }
 # Keep the test font features explicit; production uses the same bundled fallback faces.
 # Dependency dev-features do not propagate into app release builds.
 egui = { workspace = true, features = ["default_fonts", "monochrome_emoji_fonts"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+craft-update = { workspace = true }
