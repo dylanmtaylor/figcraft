@@ -84,7 +84,8 @@ pub(crate) fn show(app: &mut FigApp, ctx: &egui::Context) {
         let clean = !app.session.docs.iter().any(|d| d.is_dirty());
         match app.updates_rt.updater.show_if(ctx, clean) {
             Action::OpenUrl(url) => ctx.open_url(egui::OpenUrl::new_tab(url)),
-            Action::Close => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+            // The whole application, not just the window that drew the prompt: the root window's guarded close.
+            Action::Close => ctx.send_viewport_cmd_to(egui::ViewportId::ROOT, egui::ViewportCommand::Close),
             Action::None => {}
         }
         // The window answers Help ▸ Check for Updates, so it follows the updater's status.
@@ -92,8 +93,10 @@ pub(crate) fn show(app: &mut FigApp, ctx: &egui::Context) {
         (rt.manual_window_open, rt.status_message) = match rt.updater.status() {
             Status::Idle => (false, None),
             Status::Checking => (true, None),
-            Status::UpToDate => (true, Some(format!("FigCraft {} is currently the newest version available.", env!("CARGO_PKG_VERSION")))),
-            Status::Failed(e) => (true, Some(format!("Could not check for updates:\n{e}"))),
+            Status::UpToDate => {
+                (true, Some(tr("FigCraft {version} is currently the newest version available.").replace("{version}", env!("CARGO_PKG_VERSION"))))
+            }
+            Status::Failed(e) => (true, Some(tr("Could not check for updates:\n{error}").replace("{error}", e))),
         };
     }
 
