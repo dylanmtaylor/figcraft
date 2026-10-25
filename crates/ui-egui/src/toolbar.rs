@@ -315,7 +315,7 @@ fn help_button(app: &mut FigApp, ui: &mut Ui, canvas: Rect, t: &Tokens) {
             (tr("About FigCraft"), "help.about"),
         ] {
             if crate::right::menu_item(ui, l, crate::shortcuts::shortcut(c).unwrap_or("")) {
-                app.run(c, json!({}));
+                crate::menus::invoke(app, c);
                 ui.close();
             }
         }
