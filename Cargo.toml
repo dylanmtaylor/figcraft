@@ -40,7 +40,7 @@ craft-docpath = { version = "0.1.0", git = "https://github.com/storytold/craft-l
 # pull a second egui family version). The rev is the last merged one; the released 0.37 pin is
 # supplied by the migration's reviewed craft-libs revision.
 craft-window = { git = "https://github.com/storytold/craft-libs", rev = "25da1314d443171b4adeaad2cd9454b273f35c6f" }
-craft-update = { git = "https://github.com/storytold/craft-libs", version = "=0.1.0", rev = "db19c373c8d59a545972ca340987aecfb3611a4b", features = ["egui"] }
+craft-update = { git = "https://github.com/storytold/craft-libs", version = "=0.1.0", rev = "495e5971bc024aa96e6ed318cb6e7cd3a0103184", features = ["egui"] }
 
 # foundation
 kurbo = { version = "0.13", features = ["serde"] }
