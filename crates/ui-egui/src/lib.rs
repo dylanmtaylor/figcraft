@@ -916,10 +916,11 @@ pub struct FigApp {
     ui_frame_stamp: Option<(egui::ViewportId, u64)>,
     /// IME owner/generation/change-cause state for the on-canvas text editor, per viewport.
     pub(crate) ime: egui::ime_context::ImeContextTracker,
+    /// The check for a newer release and its prompt (desktop; [`updates_ui`]).
+    pub(crate) updates_rt: updates_ui::Runtime,
     /// Test-only count of the one IME observation each viewport pass makes.
     #[cfg(test)]
     pub(crate) ime_observations: u32,
-    pub(crate) updates_rt: updates_ui::Runtime,
 }
 
 /// What to do with the result of a command run in the background.
@@ -966,9 +967,9 @@ impl FigApp {
             logic_ticked: false,
             ui_frame_stamp: None,
             ime: egui::ime_context::ImeContextTracker::new(),
+            updates_rt: updates_ui::Runtime::default(),
             #[cfg(test)]
             ime_observations: 0,
-            updates_rt: updates_ui::Runtime::default(),
         }
     }
 
@@ -1636,6 +1637,7 @@ impl FigApp {
         let now = self.clock.now();
         self.autosave_tick(ctx, now);
         self.auto_save_tick(ctx, now);
+        updates_ui::tick(self, ctx);
         self.logic_ticked = true;
     }
 
@@ -1652,9 +1654,6 @@ impl FigApp {
     /// only runs while the root is minimised still gets theme switches, CJK faces for its own
     /// document, and the right `ui.dark` for its tabs and dialogs.
     pub(crate) fn viewport_setup(&mut self, ctx: &egui::Context) {
-    /// Per-frame logic that doesn't draw (control requests, theme, language).
-    pub fn logic(&mut self, ctx: &egui::Context) {
-        updates_ui::tick(self, ctx);
         if self.language.as_ref() != Some(&self.session.prefs.language) {
             i18n::set(&self.session.prefs.language, self.services.system_language().as_deref());
             self.language = Some(self.session.prefs.language.clone());
